@@ -1,4 +1,7 @@
 using Platform.Serilog;
+using StackExchange.Redis;
+using VietmapLive.TitleMap.Api.Providers;
+using VietmapLive.TitleMap.Api.Services;
 
 namespace VietmapLive.TitleMap.Api
 {
@@ -16,6 +19,28 @@ namespace VietmapLive.TitleMap.Api
             builder.Services.AddSwaggerGen();
 
             builder.Services.AddAllElasticApm();
+
+            // Register Redis connection
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var redisConnectionString = configuration["Redis:ConnectionString"];
+
+                if (string.IsNullOrEmpty(redisConnectionString))
+                {
+                    throw new InvalidOperationException("Redis connection string is not configured");
+                }
+
+                return ConnectionMultiplexer.Connect(redisConnectionString);
+            });
+
+            // Register memory cache
+            builder.Services.AddMemoryCache();
+
+            // Register Mapbox configuration and route provider services
+            builder.Services.AddSingleton<IMapboxConfigProvider, MapboxRedisConfigProvider>();
+            builder.Services.AddSingleton<IMapboxConfigService, MapboxConfigService>();
+            builder.Services.AddSingleton<IMapboxRouteProvider, MapboxRouteProvider>();
 
 
             builder.Host.ConfigureServices((context, services) =>
