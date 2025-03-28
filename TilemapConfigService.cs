@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Caching.Memory;
+﻿// ITilemapConfigService.cs
+using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
 using System.Text.RegularExpressions;
 using VietmapLive.TitleMap.Api.Models;
@@ -10,10 +11,15 @@ namespace VietmapLive.TitleMap.Api.Services
         Task<TilemapConfig?> GetConfigAsync(string configId);
         Task<IEnumerable<TilemapConfig>> GetAllConfigsAsync();
         Task<bool> UpdateConfigAsync(TilemapConfig config);
+        Task<bool> UpdateConfigsAsync(IEnumerable<TilemapConfig> configs);
         Task<bool> SwitchProviderAsync(string configId, string providerName);
         Task<(string Url, string ContentType, Dictionary<string, string>? Headers)> ResolveEndpointAsync(string apiPath, Dictionary<string, string> parameters);
+        Task<bool> LoadAllConfigsAsync();
     }
+}
 
+namespace VietmapLive.TitleMap.Api.Services
+{
     public class TilemapConfigService : ITilemapConfigService
     {
         private readonly IMongoCollection<TilemapConfig> _configCollection;
@@ -189,7 +195,7 @@ namespace VietmapLive.TitleMap.Api.Services
                 if (bulkOperations.Any())
                 {
                     var bulkResult = await _configCollection.BulkWriteAsync(bulkOperations);
-                    _logger.LogInformation($"Bulk update completed: {bulkResult.ModifiedCount} modified, {bulkResult.UpsertedCount} upserted");
+                    _logger.LogInformation($"Bulk update completed: {bulkResult.ModifiedCount} modified, {bulkResult.InsertedCount} upserted");
                 }
 
                 // Clear all cache
@@ -314,7 +320,7 @@ namespace VietmapLive.TitleMap.Api.Services
                                     ApiMapping.EndpointContentTypes.GetValueOrDefault(configId, "application/octet-stream");
 
                 // For sprite requests, determine if it's JSON or PNG
-                if (configId == "sprite" && apiPath.Contains(".png"))
+                if (configId == "sprite" && (apiPath.Contains(".png") || parameters.ContainsKey("sprite") && parameters["sprite"].Contains(".png")))
                 {
                     contentType = "image/png";
                 }

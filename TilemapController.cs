@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Net.Mime;
+using VietmapLive.TitleMap.Api.Services;
 
 namespace VietmapLive.TitleMap.Api.Controllers
 {
@@ -8,34 +8,23 @@ namespace VietmapLive.TitleMap.Api.Controllers
     public class TilemapController : ControllerBase
     {
         private readonly IConfiguration _configuration;
-        private readonly HttpClient _client;
+        private readonly ITileProviderService _tileProvider;
         private readonly ILogger<TilemapController> _logger;
 
-        public TilemapController(IConfiguration configuration,
-            IHttpClientFactory clientFactory,
+        public TilemapController(
+            IConfiguration configuration,
+            ITileProviderService tileProvider,
             ILogger<TilemapController> logger)
         {
             _configuration = configuration;
-            _client = clientFactory.CreateClient("Mapbox");
+            _tileProvider = tileProvider;
             _logger = logger;
         }
 
         [HttpGet("standard.json")]
         public IActionResult Get()
         {
-            var second = DateTime.Now.Second;
-
             return Redirect("https://minio.vietmap.vn/phananh/dev/standard.json");
-
-            //if (second % 2 == 0)
-            //{
-            //    return Redirect("https://minio.vietmap.vn/phananh/dev/standard.json");
-            //}
-            //else
-            //{
-
-            //    return Redirect("https://api.vietmap.live/production/tilemap/standard.json");
-            //}
         }
 
         [HttpGet("data/{z}/{x}/{y}")]
@@ -43,22 +32,26 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                string path = $"/v4/mapbox.mapbox-bathymetry-v2,mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2,mapbox.mapbox-models-v1/{z}/{x}/{y}.vector.pbf?access_token={_configuration["Mapbox:AccessToken"]}";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "z", z },
+                    { "x", x },
+                    { "y", y }
+                };
 
-                var response = await _client.GetAsync(path);
-                var content = await response.Content.ReadAsByteArrayAsync();
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/data/{z}/{x}/{y}", parameters);
 
-                Response.StatusCode = (int)response.StatusCode;
-                Response.ContentType = "application/x-protobuf";
-                Response.Headers.CacheControl = $"public, max-age={_configuration["Mapbox:DefaultCacheMaxAge"]}"; // Lấy giá trị max-age từ cấu hình
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
 
                 await Response.BodyWriter.WriteAsync(content);
 
-                return StatusCode((int)response.StatusCode);
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing data request for z={z}, x={x}, y={y}");
                 return StatusCode(500);
             }
         }
@@ -68,22 +61,26 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                string path = $"/3dtiles/v1/mapbox.mapbox-3dbuildings-v1/{z}/{x}/{y}.glb?access_token={_configuration["Mapbox:AccessToken"]}";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "z", z },
+                    { "x", x },
+                    { "y", y }
+                };
 
-                var response = await _client.GetAsync(path);
-                var content = await response.Content.ReadAsByteArrayAsync();
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/3dbuildings/{z}/{x}/{y}", parameters);
 
-                Response.StatusCode = (int)response.StatusCode;
-                Response.ContentType = "application/x-protobuf";
-                Response.Headers.CacheControl = $"public, max-age={_configuration["Mapbox:DefaultCacheMaxAge"]}"; // Lấy giá trị max-age từ cấu hình
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
 
                 await Response.BodyWriter.WriteAsync(content);
 
-                return StatusCode((int)response.StatusCode);
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing 3D buildings request for z={z}, x={x}, y={y}");
                 return StatusCode(500);
             }
         }
@@ -93,22 +90,25 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                string path = $"/fonts/v1/mapbox/{fontstack}/{range}.pbf?access_token={_configuration["Mapbox:AccessToken"]}";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "fontstack", fontstack },
+                    { "range", range }
+                };
 
-                var response = await _client.GetAsync(path);
-                var content = await response.Content.ReadAsByteArrayAsync();
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/glyphs/{fontstack}/{range}", parameters);
 
-                Response.StatusCode = (int)response.StatusCode;
-                Response.ContentType = "application/x-protobuf";
-                Response.Headers.CacheControl = $"public, max-age={_configuration["Mapbox:DefaultCacheMaxAge"]}"; // Lấy giá trị max-age từ cấu hình
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
 
                 await Response.BodyWriter.WriteAsync(content);
 
-                return StatusCode((int)response.StatusCode);
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing glyphs request for fontstack={fontstack}, range={range}");
                 return StatusCode(500);
             }
         }
@@ -118,22 +118,27 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                string path = $"/styles/v1/mapbox/standard/efkz8o3ujknnkoa17380x12mp/{sprite}?access_token={_configuration["Mapbox:AccessToken"]}";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "sprite", sprite }
+                };
 
-                var response = await _client.GetAsync(path);
-                var content = await response.Content.ReadAsByteArrayAsync();
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/sprite/{sprite}", parameters);
 
-                Response.StatusCode = (int)response.StatusCode;
-                Response.ContentType = "application/x-protobuf";
-                Response.Headers.CacheControl = $"public, max-age={_configuration["Mapbox:DefaultCacheMaxAge"]}"; // Lấy giá trị max-age từ cấu hình
+                // Determine the correct content type based on the extension
+                string effectiveContentType = sprite.EndsWith(".png") ? "image/png" : contentType;
+
+                Response.StatusCode = statusCode;
+                Response.ContentType = effectiveContentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
 
                 await Response.BodyWriter.WriteAsync(content);
 
-                return StatusCode((int)response.StatusCode);
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing sprite request for sprite={sprite}");
                 return StatusCode(500);
             }
         }
@@ -143,22 +148,24 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                string path = $"/models/v1/mapbox/{name}?access_token={_configuration["Mapbox:AccessToken"]}";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "name", name }
+                };
 
-                var response = await _client.GetAsync(path);
-                var content = await response.Content.ReadAsByteArrayAsync();
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/models/{name}", parameters);
 
-                Response.StatusCode = (int)response.StatusCode;
-                Response.ContentType = "application/x-protobuf";
-                Response.Headers.CacheControl = $"public, max-age={_configuration["Mapbox:DefaultCacheMaxAge"]}"; // Lấy giá trị max-age từ cấu hình
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
 
                 await Response.BodyWriter.WriteAsync(content);
 
-                return StatusCode((int)response.StatusCode);
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing models request for name={name}");
                 return StatusCode(500);
             }
         }
@@ -168,23 +175,24 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                using (var httpClient = new HttpClient())
+                var parameters = new Dictionary<string, string>
                 {
-                    string path = $"http://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2";
-
-                    _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-                    var response = await _client.GetAsync(path);
-                    var content = await response.Content.ReadAsByteArrayAsync();
-
-                    Response.StatusCode = (int)response.StatusCode;
-                    Response.ContentType = "image/png";
-
-                    return File(content, "image/png");
+                    { "z", z },
+                    { "x", x },
+                    { "y", y }
                 };
+
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/a.satellite/{z}/{x}/{y}", parameters);
+
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
+
+                return File(content, contentType);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing satellite A request for z={z}, x={x}, y={y}");
                 return StatusCode(500);
             }
         }
@@ -194,53 +202,53 @@ namespace VietmapLive.TitleMap.Api.Controllers
         {
             try
             {
-                using (var httpClient = new HttpClient())
+                var parameters = new Dictionary<string, string>
                 {
-                    string path = $"http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&scale=2";
-
-                    _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-                    var response = await _client.GetAsync(path);
-                    var content = await response.Content.ReadAsByteArrayAsync();
-
-                    Response.StatusCode = (int)response.StatusCode;
-                    Response.ContentType = "image/png";
-
-                    return File(content, "image/png");
+                    { "z", z },
+                    { "x", x },
+                    { "y", y }
                 };
+
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/b.satellite/{z}/{x}/{y}", parameters);
+
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
+
+                return File(content, contentType);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error processing request: {ex}");
+                _logger.LogError(ex, $"Error processing satellite B request for z={z}, x={x}, y={y}");
                 return StatusCode(500);
             }
         }
 
-        //[HttpGet("mt3/{z}/{x}/{y}")]
-        //public async Task<IActionResult> MT3(string z, string x, string y)
-        //{
-        //    try
-        //    {
-        //        using (var httpClient = new HttpClient())
-        //        {
-        //            string path = $"https://a.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.png?access_token={_configuration["Mapbox:AccessToken"]}";
+        [HttpGet("traffic/{z}/{x}/{y}")]
+        public async Task<IActionResult> Traffic(string z, string x, string y)
+        {
+            try
+            {
+                var parameters = new Dictionary<string, string>
+                {
+                    { "z", z },
+                    { "x", x },
+                    { "y", y }
+                };
 
-        //            var response = await _client.GetAsync(path);
-        //            var content = await response.Content.ReadAsByteArrayAsync();
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/traffic/{z}/{x}/{y}", parameters);
 
-        //            Response.StatusCode = (int)response.StatusCode;
-        //            Response.ContentType = "image/png";
-        //            Response.Headers.CacheControl = $"public, max-age={_configuration["Mapbox:DefaultCacheMaxAge"]}"; // Lấy giá trị max-age từ cấu hình
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
 
-        //            await Response.BodyWriter.WriteAsync(content);
-
-        //            return StatusCode((int)response.StatusCode);
-        //        };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError($"Error processing request: {ex}");
-        //        return StatusCode(500);
-        //    }
-        //}
+                return File(content, contentType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error processing traffic request for z={z}, x={x}, y={y}");
+                return StatusCode(500);
+            }
+        }
     }
 }

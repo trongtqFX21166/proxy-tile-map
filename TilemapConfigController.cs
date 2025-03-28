@@ -10,12 +10,15 @@ namespace VietmapLive.TitleMap.Api.Controllers
     {
         private readonly ITilemapConfigService _configService;
         private readonly ILogger<TilemapConfigController> _logger;
+        private readonly IConfiguration _configuration;
 
         public TilemapConfigController(
             ITilemapConfigService configService,
+            IConfiguration configuration,
             ILogger<TilemapConfigController> logger)
         {
             _configService = configService;
+            _configuration = configuration;
             _logger = logger;
         }
 
