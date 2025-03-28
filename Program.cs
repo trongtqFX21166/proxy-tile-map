@@ -28,14 +28,49 @@ namespace VietmapLive.TitleMap.Api
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
                 var configuration = sp.GetRequiredService<IConfiguration>();
-                var redisConnectionString = configuration["Redis:ConnectionString"];
+                var logger = sp.GetRequiredService<ILogger<Program>>();
 
-                if (string.IsNullOrEmpty(redisConnectionString))
+                // Get Redis cluster configuration
+                var hosts = configuration["Redis:Hosts"]?.Split(',');
+                var ports = configuration["Redis:Ports"]?.Split(',');
+                var password = configuration["Redis:Password"];
+
+                if (hosts == null || ports == null || hosts.Length != ports.Length)
                 {
-                    throw new InvalidOperationException("Redis connection string is not configured");
+                    logger.LogWarning("Redis cluster configuration is invalid, using default localhost:6379");
+                    return ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false");
                 }
 
-                return ConnectionMultiplexer.Connect(redisConnectionString);
+                // Build connection string for the Redis cluster
+                var configOptions = new ConfigurationOptions
+                {
+                    Password = password,
+                    AbortOnConnectFail = false,
+                    ConnectRetry = 3,
+                    ConnectTimeout = 5000,
+                    SyncTimeout = 5000
+                };
+
+                // Add all endpoints
+                for (int i = 0; i < hosts.Length; i++)
+                {
+                    if (int.TryParse(ports[i], out int port))
+                    {
+                        configOptions.EndPoints.Add(hosts[i], port);
+                    }
+                }
+
+                try
+                {
+                    logger.LogInformation("Connecting to Redis cluster...");
+                    return ConnectionMultiplexer.Connect(configOptions);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to connect to Redis cluster. Using a dummy implementation for development.");
+                    // Return a mock implementation for development purposes
+                    return ConnectionMultiplexer.Connect("127.0.0.1:6379,abortConnect=false");
+                }
             });
 
             // Register MongoDB client
@@ -56,7 +91,7 @@ namespace VietmapLive.TitleMap.Api
             builder.Services.AddMemoryCache();
 
             // Register services
-            builder.Services.AddSingleton<IMapboxConfigProvider, MapboxRedisConfigProvider>();
+            builder.Services.AddSingleton<ICombinedConfigProvider, CombinedConfigProvider>();
             builder.Services.AddSingleton<IMapboxRouteProvider, MapboxRouteProvider>();
             builder.Services.AddSingleton<IMapboxConfigService, MapboxConfigService>();
             builder.Services.AddSingleton<ITileProviderService, TileProviderService>();

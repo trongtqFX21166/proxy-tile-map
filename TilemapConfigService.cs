@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using MongoDB.Driver;
 using System.Text.RegularExpressions;
 using VietmapLive.TitleMap.Api.Models;
+using VietmapLive.TitleMap.Api.Providers;
 
 namespace VietmapLive.TitleMap.Api.Services
 {
@@ -23,37 +24,38 @@ namespace VietmapLive.TitleMap.Api.Services
     public class TilemapConfigService : ITilemapConfigService
     {
         private readonly IMongoCollection<TilemapConfig> _configCollection;
-        private readonly IMemoryCache _cache;
+        private readonly ICombinedConfigProvider _cacheProvider;
         private readonly ILogger<TilemapConfigService> _logger;
         private readonly IConfiguration _configuration;
-        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(10);
-        private const string CacheKeyPrefix = "TilemapConfig_";
 
         public TilemapConfigService(
             IMongoClient mongoClient,
-            IMemoryCache cache,
+            ICombinedConfigProvider cacheProvider,
             IConfiguration configuration,
             ILogger<TilemapConfigService> logger)
         {
             var database = mongoClient.GetDatabase(configuration["MongoDB:DatabaseName"]);
             _configCollection = database.GetCollection<TilemapConfig>(configuration["MongoDB:ConfigCollectionName"]);
-            _cache = cache;
+            _cacheProvider = cacheProvider;
             _logger = logger;
             _configuration = configuration;
         }
 
         public async Task<TilemapConfig?> GetConfigAsync(string configId)
         {
-            var cacheKey = $"{CacheKeyPrefix}{configId}";
+            // Try to get from combined cache first (memory cache + Redis)
+            var config = await _cacheProvider.GetConfigAsync(configId);
 
-            if (!_cache.TryGetValue(cacheKey, out TilemapConfig? config))
+            if (config == null)
             {
+                // If not in cache, get from MongoDB
                 var filter = Builders<TilemapConfig>.Filter.Eq("_id", configId);
                 config = await _configCollection.Find(filter).FirstOrDefaultAsync();
 
                 if (config != null)
                 {
-                    _cache.Set(cacheKey, config, _cacheExpiration);
+                    // Store in cache for faster access
+                    await _cacheProvider.UpdateConfigAsync(config);
                 }
                 else
                 {
@@ -66,12 +68,21 @@ namespace VietmapLive.TitleMap.Api.Services
 
         public async Task<IEnumerable<TilemapConfig>> GetAllConfigsAsync()
         {
-            const string cacheKey = $"{CacheKeyPrefix}ALL";
-
-            if (!_cache.TryGetValue(cacheKey, out List<TilemapConfig>? configs))
+            // Try to get all configs from cache first
+            var cachedConfig = await _cacheProvider.GetConfigAsync("ALL");
+            if (cachedConfig != null && cachedConfig is TilemapConfig allConfigsContainer)
             {
-                configs = await _configCollection.Find(_ => true).ToListAsync();
-                _cache.Set(cacheKey, configs, _cacheExpiration);
+                // If we have a cached version, return it
+                return new List<TilemapConfig> { allConfigsContainer };
+            }
+
+            // If not in cache, get from MongoDB
+            var configs = await _configCollection.Find(_ => true).ToListAsync();
+
+            // Store all configs in cache
+            if (configs != null && configs.Any())
+            {
+                await _cacheProvider.LoadAllConfigsAsync();
             }
 
             return configs ?? new List<TilemapConfig>();
@@ -81,22 +92,27 @@ namespace VietmapLive.TitleMap.Api.Services
         {
             try
             {
-                _logger.LogInformation("Loading all configurations into memory cache");
+                _logger.LogInformation("Loading all configurations from MongoDB into cache");
+
+                // First, clear existing cache
+                await _cacheProvider.ClearAllCacheAsync();
+
+                // Get all configs from MongoDB
                 var configs = await _configCollection.Find(_ => true).ToListAsync();
 
-                // Store all configs in cache
-                _cache.Set($"{CacheKeyPrefix}ALL", configs, _cacheExpiration);
-
-                // Store individual configs in cache
-                foreach (var config in configs)
+                // Load into cache
+                if (configs != null && configs.Any())
                 {
-                    if (!string.IsNullOrEmpty(config.Id))
+                    foreach (var config in configs)
                     {
-                        _cache.Set($"{CacheKeyPrefix}{config.Id}", config, _cacheExpiration);
+                        if (!string.IsNullOrEmpty(config.Id))
+                        {
+                            await _cacheProvider.UpdateConfigAsync(config);
+                        }
                     }
                 }
 
-                _logger.LogInformation($"Loaded {configs.Count} configurations into memory cache");
+                _logger.LogInformation($"Loaded {configs?.Count ?? 0} configurations into cache");
                 return true;
             }
             catch (Exception ex)
@@ -137,10 +153,11 @@ namespace VietmapLive.TitleMap.Api.Services
                     await _configCollection.ReplaceOneAsync(filter, config, new ReplaceOptions { IsUpsert = true });
                 }
 
-                // Invalidate cache
-                var cacheKey = $"{CacheKeyPrefix}{config.Id}";
-                _cache.Remove(cacheKey);
-                _cache.Remove($"{CacheKeyPrefix}ALL");
+                // Update cache after MongoDB update
+                await _cacheProvider.UpdateConfigAsync(config);
+
+                // Ensure cache is cleared properly
+                await _cacheProvider.ClearCacheAsync(config.Id);
 
                 return true;
             }
@@ -199,16 +216,18 @@ namespace VietmapLive.TitleMap.Api.Services
                 }
 
                 // Clear all cache
-                _cache.Remove($"{CacheKeyPrefix}ALL");
+                await _cacheProvider.ClearAllCacheAsync();
+
+                // Update cache for each config
                 foreach (var config in configs)
                 {
                     if (!string.IsNullOrEmpty(config.Id))
                     {
-                        _cache.Remove($"{CacheKeyPrefix}{config.Id}");
+                        await _cacheProvider.UpdateConfigAsync(config);
                     }
                 }
 
-                // Load updated configs into cache
+                // Reload all configs into cache
                 await LoadAllConfigsAsync();
 
                 return true;

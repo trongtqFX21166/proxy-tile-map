@@ -35,7 +35,7 @@ namespace VietmapLive.TitleMap.Api.Services
             {
                 // Create a cache key from the API path and parameters
                 string cacheKey = CreateCacheKey(apiPath, parameters);
-
+                
                 // Try to get from cache first
                 if (_cache.TryGetValue(cacheKey, out (byte[] Content, int StatusCode, string ContentType, int CacheMaxAge) cachedResult))
                 {
@@ -62,7 +62,7 @@ namespace VietmapLive.TitleMap.Api.Services
 
                 // Make the request
                 var response = await client.SendAsync(request);
-
+                
                 var content = await response.Content.ReadAsByteArrayAsync();
                 var statusCode = (int)response.StatusCode;
 
@@ -82,7 +82,7 @@ namespace VietmapLive.TitleMap.Api.Services
                 {
                     var cacheOptions = new MemoryCacheEntryOptions()
                         .SetAbsoluteExpiration(TimeSpan.FromSeconds(cacheMaxAge));
-
+                        
                     _cache.Set(cacheKey, result, cacheOptions);
                 }
 
@@ -98,13 +98,13 @@ namespace VietmapLive.TitleMap.Api.Services
         private string CreateCacheKey(string apiPath, Dictionary<string, string> parameters)
         {
             var key = $"Tile:{apiPath}";
-
+            
             if (parameters != null && parameters.Count > 0)
             {
                 var paramString = string.Join(":", parameters.OrderBy(p => p.Key).Select(p => $"{p.Key}={p.Value}"));
                 key += $":{paramString}";
             }
-
+            
             return key;
         }
     }

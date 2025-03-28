@@ -12,13 +12,13 @@ namespace VietmapLive.TitleMap.Api.Services
 
     public class MapboxConfigService : IMapboxConfigService
     {
-        private readonly IMapboxConfigProvider _configProvider;
+        private readonly ICombinedConfigProvider _configProvider;
         private readonly IMapboxRouteProvider _routeProvider;
         private readonly IConfiguration _configuration;
         private readonly ILogger<MapboxConfigService> _logger;
 
         public MapboxConfigService(
-            IMapboxConfigProvider configProvider,
+            ICombinedConfigProvider configProvider,
             IMapboxRouteProvider routeProvider,
             IConfiguration configuration,
             ILogger<MapboxConfigService> logger)
@@ -48,6 +48,7 @@ namespace VietmapLive.TitleMap.Api.Services
                 config.ActivateTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             }
 
+            // Update the config in Redis and clear the memory cache
             return await _configProvider.UpdateConfigAsync(config);
         }
 
