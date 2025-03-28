@@ -1,0 +1,6 @@
+@VietmapLive.TitleMap.Api_HostAddress = http://localhost:5155
+
+GET {{VietmapLive.TitleMap.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
