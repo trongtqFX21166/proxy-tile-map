@@ -67,12 +67,12 @@ namespace VietmapLive.TitleMap.Api.Services
                 var statusCode = (int)response.StatusCode;
 
                 // Get cache max age from configuration (default to 7 days)
-                int cacheMaxAge = _configuration.GetValue<int>("Mapbox:DefaultCacheMaxAge", 604800);
+                int cacheMaxAge = _configuration.GetValue<int>("Mapbox:DefaultCacheMaxAge", 300);
 
                 // If this is traffic data, use a shorter cache time
                 if (apiPath.Contains("/traffic/"))
                 {
-                    cacheMaxAge = _configuration.GetValue<int>("Vietmap:TrafficCacheMaxAge", 60);
+                    cacheMaxAge = _configuration.GetValue<int>("Vietmap:TrafficCacheMaxAge", 300);
                 }
 
                 var result = (content, statusCode, contentType, cacheMaxAge);

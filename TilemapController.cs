@@ -24,7 +24,8 @@ namespace VietmapLive.TitleMap.Api.Controllers
         [HttpGet("standard.json")]
         public IActionResult Get()
         {
-            return Redirect("https://minio.vietmap.vn/phananh/dev/standard.json");
+            string standardJsonUrl = _configuration["Vietmap:StandardJsonUrl"] ?? string.Empty;
+            return Redirect(standardJsonUrl);
         }
 
         [HttpGet("base/{z}/{x}/{y}")]
