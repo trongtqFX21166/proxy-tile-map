@@ -1,7 +1,7 @@
 #!/bin/bash
 PRJ=""
 IMAGE_TAG="vietmaplive.titlemap.api"
-VER="1.0.10"
+VER="1.0.14"
 RELEASE_FOLDER=""
 # wait k8s export image
 REGISTRY_URL="vmapi/hubcentral"

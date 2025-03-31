@@ -279,12 +279,6 @@ namespace VietmapLive.TitleMap.Api.Controllers
                     new ProviderInfo
                     {
                         Name = "vietmap",
-                        Url = "https://tile.vietmap.live/production/v3/fonts/{fontstack}/{range}.pbf",
-                        ContentType = "application/x-protobuf"
-                    },
-                    new ProviderInfo
-                    {
-                        Name = "vietmap_fastmap",
                         Url = "https://maps.fastmap.vn/mt/fonts/{fontstack}/{range}.pbf",
                         ContentType = "application/x-protobuf"
                     },
@@ -310,14 +304,8 @@ namespace VietmapLive.TitleMap.Api.Controllers
                     new ProviderInfo
                     {
                         Name = "vietmap",
-                        Url = "https://tile.vietmap.live/production/v3/sprite{sprite}",
+                        Url = "https://minio.vietmap.vn/khoaln/vml_v3/sprite{sprite}",
                         ContentType = "application/json" // Content type will be dynamically set based on .png suffix
-                    },
-                    new ProviderInfo
-                    {
-                        Name = "vietmap_fastmap",
-                        Url = "https://maps.fastmap.vn/mt/styles/neutral033/sprite{sprite}",
-                        ContentType = "application/json"
                     },
                     new ProviderInfo
                     {
@@ -357,12 +345,7 @@ namespace VietmapLive.TitleMap.Api.Controllers
                 Api = "/a.satellite/{z}/{x}/{y}",
                 Providers = new List<ProviderInfo>
                 {
-                    new ProviderInfo
-                    {
-                        Name = "vietmap",
-                        Url = "https://tile.vietmap.live/production/v3/a.satellite/{z}/{x}/{y}",
-                        ContentType = "image/png"
-                    },
+                    
                     new ProviderInfo
                     {
                         Name = "google",
@@ -374,7 +357,7 @@ namespace VietmapLive.TitleMap.Api.Controllers
                         }
                     }
                 },
-                ActivateProvider = "vietmap",
+                ActivateProvider = "google",
                 ActivateTime = currentTime,
                 CacheMaxAge = 604800
             });
@@ -386,12 +369,7 @@ namespace VietmapLive.TitleMap.Api.Controllers
                 Api = "/b.satellite/{z}/{x}/{y}",
                 Providers = new List<ProviderInfo>
                 {
-                    new ProviderInfo
-                    {
-                        Name = "vietmap",
-                        Url = "https://tile.vietmap.live/production/v3/b.satellite/{z}/{x}/{y}",
-                        ContentType = "image/png"
-                    },
+                    
                     new ProviderInfo
                     {
                         Name = "google",
@@ -403,7 +381,7 @@ namespace VietmapLive.TitleMap.Api.Controllers
                         }
                     }
                 },
-                ActivateProvider = "vietmap",
+                ActivateProvider = "google",
                 ActivateTime = currentTime,
                 CacheMaxAge = 604800
             });
@@ -418,12 +396,6 @@ namespace VietmapLive.TitleMap.Api.Controllers
                     new ProviderInfo
                     {
                         Name = "vietmap",
-                        Url = "https://tile.vietmap.live/production/v3/traffic/{z}/{x}/{y}",
-                        ContentType = "image/png"
-                    },
-                    new ProviderInfo
-                    {
-                        Name = "vietmap_fastmap",
                         Url = "https://maps.fastmap.vn/mt/tf/{z}/{x}/{y}",
                         ContentType = "image/png"
                     }
@@ -431,6 +403,25 @@ namespace VietmapLive.TitleMap.Api.Controllers
                 ActivateProvider = "vietmap",
                 ActivateTime = currentTime,
                 CacheMaxAge = 60 // Short cache for traffic data
+            });
+
+            //9. Fonts
+            configs.Add(new TilemapConfig
+            {
+                Id = "fonts",
+                Api = "/fonts/{fontstack}/{range}",
+                Providers = new List<ProviderInfo>
+                {
+                    new ProviderInfo
+                    {
+                        Name = "vietmap",
+                        Url = "https://maps.fastmap.vn/mt/fonts/{fontstack}/{range}",
+                        ContentType = "application/x-protobuf"
+                    }
+                },
+                ActivateProvider = "vietmap",
+                ActivateTime = currentTime,
+                CacheMaxAge = 604800
             });
 
             return configs;

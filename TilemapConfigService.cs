@@ -307,10 +307,22 @@ namespace VietmapLive.TitleMap.Api.Services
                 string url = provider.Url;
 
                 // Handle Mapbox access token if needed
-                if (provider.Name == "mapbox" && url.Contains("{accessToken}"))
+                string accessToken = _configuration["Mapbox:AccessToken"] ?? "";
+
+                // Handle Mapbox access token for all Mapbox providers
+                if (provider.Name == "mapbox" || provider.Name.StartsWith("mapbox_"))
                 {
-                    string accessToken = _configuration["Mapbox:AccessToken"] ?? "";
-                    url = url.Replace("{accessToken}", accessToken);
+                    // If URL already contains the placeholder, replace it
+                    if (url.Contains("{accessToken}"))
+                    {
+                        url = url.Replace("{accessToken}", accessToken);
+                    }
+                    // Otherwise, check if it already has an access token
+                    else if (!url.Contains("access_token=") && !string.IsNullOrEmpty(accessToken))
+                    {
+                        // Add access token as query parameter
+                        url += (url.Contains("?") ? "&" : "?") + "access_token=" + accessToken;
+                    }
                 }
 
                 // Add base URL for relative URLs

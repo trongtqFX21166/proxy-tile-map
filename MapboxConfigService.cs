@@ -7,7 +7,7 @@ namespace VietmapLive.TitleMap.Api.Services
     {
         Task<TilemapConfig?> GetConfigAsync(string configId);
         Task<bool> UpdateConfigAsync(TilemapConfig config);
-        Task<(string Url, string ContentType, Dictionary<string, string>? Headers)> ResolveEndpointAsync(string apiPath);
+        Task<(string Url, string ContentType, Dictionary<string, string>? Headers)> ResolveEndpointAsync(string apiPath, Dictionary<string, string> parameters);
     }
 
     public class MapboxConfigService : IMapboxConfigService
@@ -52,7 +52,7 @@ namespace VietmapLive.TitleMap.Api.Services
             return await _configProvider.UpdateConfigAsync(config);
         }
 
-        public async Task<(string Url, string ContentType, Dictionary<string, string>? Headers)> ResolveEndpointAsync(string apiPath)
+        public async Task<(string Url, string ContentType, Dictionary<string, string>? Headers)> ResolveEndpointAsync(string apiPath, Dictionary<string, string> parameters)
         {
             try
             {
@@ -63,7 +63,7 @@ namespace VietmapLive.TitleMap.Api.Services
                     throw new InvalidOperationException($"No route mapping found for API path: {apiPath}");
                 }
 
-                var (configId, parameters) = routeInfo.Value;
+                var (configId, _parameters) = routeInfo.Value;
 
                 // Get the configuration
                 var config = await GetConfigAsync(configId);

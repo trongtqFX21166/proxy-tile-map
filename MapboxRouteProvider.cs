@@ -29,6 +29,7 @@ namespace VietmapLive.TitleMap.Api.Providers
             _routePatterns.TryAdd("/a.satellite/{z}/{x}/{y}", "satellite_a");
             _routePatterns.TryAdd("/b.satellite/{z}/{x}/{y}", "satellite_b");
             _routePatterns.TryAdd("/traffic/{z}/{x}/{y}", "traffic");
+            _routePatterns.TryAdd("/fonts/{fontstack}/{range}", "fonts");
         }
 
         public (string ConfigId, Dictionary<string, string> Parameters)? ParseApiPath(string apiPath)

@@ -27,7 +27,7 @@ namespace VietmapLive.TitleMap.Api.Controllers
             return Redirect("https://minio.vietmap.vn/phananh/dev/standard.json");
         }
 
-        [HttpGet("data/{z}/{x}/{y}")]
+        [HttpGet("base/{z}/{x}/{y}")]
         public async Task<IActionResult> Data(string z, string x, string y)
         {
             try
@@ -113,7 +113,7 @@ namespace VietmapLive.TitleMap.Api.Controllers
             }
         }
 
-        [HttpGet("sprite/{sprite}")]
+        [HttpGet("sprite{sprite}")]
         public async Task<IActionResult> Sprite(string sprite)
         {
             try
@@ -250,5 +250,34 @@ namespace VietmapLive.TitleMap.Api.Controllers
                 return StatusCode(500);
             }
         }
+
+        [HttpGet("fonts/{fontstack}/{range}")]
+        public async Task<IActionResult> Fonts(string fontstack, string range)
+        {
+            try
+            {
+                var parameters = new Dictionary<string, string>
+                {
+                    { "fontstack", fontstack },
+                    { "range", range }
+                };
+
+                var (content, statusCode, contentType, cacheMaxAge) = await _tileProvider.FetchTileDataAsync("/fonts/{fontstack}/{range}", parameters);
+
+                Response.StatusCode = statusCode;
+                Response.ContentType = contentType;
+                Response.Headers.CacheControl = $"public, max-age={cacheMaxAge}";
+
+                await Response.BodyWriter.WriteAsync(content);
+
+                return new EmptyResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error processing glyphs request for fontstack={fontstack}, range={range}");
+                return StatusCode(500);
+            }
+        }
+
     }
 }

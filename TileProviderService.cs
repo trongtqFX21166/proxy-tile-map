@@ -43,7 +43,7 @@ namespace VietmapLive.TitleMap.Api.Services
                 }
 
                 // Resolve the endpoint
-                var (url, contentType, headers) = await _configService.ResolveEndpointAsync(apiPath);
+                var (url, contentType, headers) = await _configService.ResolveEndpointAsync(apiPath, parameters);
 
                 // Create a client with a custom name if needed, otherwise use a general client
                 var client = _httpClientFactory.CreateClient();
